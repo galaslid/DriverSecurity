@@ -18,37 +18,19 @@ bld/
 .vs/
 *.user
 *.userosscache
-*.suo
+*.sln.docstates
 *.userprefs
-*.pidb
+
+# Rider
+.idea/
+*.sln.iml
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
 *.sln.docstates
 
-# .NET Core
-project.lock.json
-project.fragment.lock.json
-artifacts/
-
-# ReSharper
-_ReSharper*/
-*.[Rr]e[Ss]harper
-*.DotSettings.user
-
-# NuGet Packages
-*.nupkg
-# NuGet Symbol Packages
-*.snupkg
-# The packages folder can be ignored because of Package Restore
-**/[Pp]ackages/*
-# except build/, which is used as an MSBuild target.
-!**/[Pp]ackages/build/
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/ 
+# Visual Studio cache/options directory
+.vs/

@@ -38,6 +38,7 @@ public class Program
             Console.WriteLine("5. Check WFP Status");
             Console.WriteLine("6. Check for Vulnerable Drivers");
             Console.WriteLine("7. Check Specific Driver");
+            Console.WriteLine("8. Get Detailed Driver Info");
             Console.WriteLine("0. Exit");
 
             if (int.TryParse(Console.ReadLine(), out int choice))
@@ -79,6 +80,30 @@ public class Program
                             }
                             Console.WriteLine(provider.CheckSpecificDriver(driverName));
                             break;
+                        case 8:
+                            Console.Write("Enter driver path: ");
+                            var driverPath = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(driverPath))
+                            {
+                                Console.WriteLine("Invalid driver path!");
+                                break;
+                            }
+                            var detailedInfo = await provider.GetDetailedDriverInfoAsync(driverPath);
+                            Console.WriteLine("\nDetailed Driver Information:");
+                            Console.WriteLine($"Name: {detailedInfo.DriverName}");
+                            Console.WriteLine($"Version: {detailedInfo.Version}");
+                            Console.WriteLine($"Publisher: {detailedInfo.Publisher}");
+                            Console.WriteLine($"Signed: {detailedInfo.IsSigned}");
+                            Console.WriteLine($"Signature Status: {detailedInfo.SignatureStatus}");
+                            Console.WriteLine($"Last Modified: {detailedInfo.LastModified}");
+                            Console.WriteLine($"File Size: {detailedInfo.FileSize}");
+                            Console.WriteLine($"Security Status: {detailedInfo.SecurityStatus}");
+                            Console.WriteLine("\nDependencies:");
+                            foreach (var dep in detailedInfo.Dependencies)
+                            {
+                                Console.WriteLine($"- {dep}");
+                            }
+                            break;
                         case 0:
                             exit = true;
                             continue;
@@ -117,5 +142,6 @@ public class Program
         services.AddSingleton<DriverInfoProvider>();
         services.AddSingleton<DriverMonitor>();
         services.AddSingleton<ReportGenerator>();
+        services.AddSingleton<DriverAnalyzer>();
     }
 }

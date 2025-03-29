@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using WindowsDriverInfo.Models;
 using WindowsDriverInfo.Services;
 
 namespace WindowsDriverInfo;
@@ -12,7 +15,16 @@ public class Program
             return;
         }
 
-        var provider = new DriverInfoProvider();
+        var services = new ServiceCollection();
+        ConfigureServices(services);
+        
+        using var serviceProvider = services.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+        var config = serviceProvider.GetRequiredService<DriverCheckerConfig>();
+        var provider = serviceProvider.GetRequiredService<DriverInfoProvider>();
+        var monitor = serviceProvider.GetRequiredService<DriverMonitor>();
+        var reportGenerator = serviceProvider.GetRequiredService<ReportGenerator>();
+
         bool exit = false;
 
         while (!exit)
@@ -84,5 +96,26 @@ public class Program
                 Console.ReadKey();
             }
         }
+    }
+
+    private static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddLogging(builder =>
+        {
+            builder.AddConsole();
+            builder.AddDebug();
+        });
+
+        services.AddSingleton<DriverCheckerConfig>(new DriverCheckerConfig
+        {
+            DriversPath = @"C:\Windows\System32\drivers",
+            CacheTimeout = TimeSpan.FromMinutes(30),
+            EnableRealTimeMonitoring = true,
+            ReportOutputPath = "reports"
+        });
+
+        services.AddSingleton<DriverInfoProvider>();
+        services.AddSingleton<DriverMonitor>();
+        services.AddSingleton<ReportGenerator>();
     }
 }

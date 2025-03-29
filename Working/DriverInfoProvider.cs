@@ -20,11 +20,13 @@ public class DriverInfoProvider
 {
     private readonly DriverCheckCache _cache;
     private readonly ILogger<DriverInfoProvider> _logger;
+    private readonly DriverAnalyzer _analyzer;
 
-    public DriverInfoProvider(ILogger<DriverInfoProvider> logger)
+    public DriverInfoProvider(ILogger<DriverInfoProvider> logger, ILoggerFactory loggerFactory)
     {
         _cache = new DriverCheckCache(TimeSpan.FromMinutes(30));
         _logger = logger;
+        _analyzer = new DriverAnalyzer(loggerFactory);
     }
 
     public bool CheckDriverSignatureEnforcement()
@@ -382,5 +384,10 @@ public class DriverInfoProvider
             _logger.LogError(ex, "Error checking driver vulnerability: {DriverPath}", driverPath);
             return false;
         }
+    }
+
+    public async Task<DriverAnalyzer.DriverAnalysisResult> GetDetailedDriverInfoAsync(string driverPath)
+    {
+        return await _analyzer.AnalyzeDriverAsync(driverPath);
     }
 }

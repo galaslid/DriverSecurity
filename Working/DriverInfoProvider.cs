@@ -11,11 +11,22 @@ using WindowsDriverInfo.Services;
 using WindowsDriverInfo.Models;
 using System.Text.Json;
 using System.Text;
+using Microsoft.Extensions.Logging;
+using WindowsDriverInfo.Exceptions;
 
 namespace WindowsDriverInfo;
 
 public class DriverInfoProvider
 {
+    private readonly DriverCheckCache _cache;
+    private readonly ILogger<DriverInfoProvider> _logger;
+
+    public DriverInfoProvider(ILogger<DriverInfoProvider> logger)
+    {
+        _cache = new DriverCheckCache(TimeSpan.FromMinutes(30));
+        _logger = logger;
+    }
+
     public bool CheckDriverSignatureEnforcement()
     {
         if (!OperatingSystem.IsWindows())
@@ -324,5 +335,52 @@ public class DriverInfoProvider
         }
         
         return result.ToString();
+    }
+
+    public async Task<bool> IsDriverVulnerableAsync(string driverPath, string hash)
+    {
+        try
+        {
+            if (_cache.TryGetCachedResult(driverPath, out bool isVulnerable))
+            {
+                return isVulnerable;
+            }
+
+            var result = await Task.Run(() => CheckDriverVulnerability(driverPath, hash));
+            _cache.CacheResult(driverPath, result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking driver vulnerability: {DriverPath}", driverPath);
+            throw new DriverCheckException("Failed to check driver vulnerability", driverPath);
+        }
+    }
+
+    private bool CheckDriverVulnerability(string driverPath, string hash)
+    {
+        try
+        {
+            var lolDriversService = new LolDriversService();
+            var vulnerableDrivers = lolDriversService.GetVulnerableDriversAsync().GetAwaiter().GetResult();
+            
+            var driverName = Path.GetFileName(driverPath);
+            
+            foreach (var vulnDriver in vulnerableDrivers)
+            {
+                if ((vulnDriver.Tags.Any() && driverName.ToLower() == vulnDriver.Tags[0].ToLower()) || 
+                    vulnDriver.GetKnownVulnerableSamples().Contains(hash, StringComparer.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking driver vulnerability: {DriverPath}", driverPath);
+            return false;
+        }
     }
 }

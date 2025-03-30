@@ -55,13 +55,16 @@ public class DriverMonitor : IDisposable
 
     private async Task CheckDriver(string driverPath)
     {
-        using var sha256 = SHA256.Create();
-        using var stream = File.OpenRead(driverPath);
-        var hash = BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-        
-        var isVulnerable = await _provider.IsDriverVulnerableAsync(driverPath, hash);
-        _logger.LogInformation("Driver {DriverPath} vulnerability status: {IsVulnerable}", 
-            driverPath, isVulnerable);
+        try
+        {
+            var report = await _provider.GetComprehensiveDriverCheckAsync(driverPath);
+            _logger.LogInformation("Driver {DriverPath} vulnerability status: {IsVulnerable}", 
+                driverPath, report.LolDriversCheck.IsVulnerable);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking driver: {DriverPath}", driverPath);
+        }
     }
 
     public void Dispose()

@@ -34,12 +34,9 @@ public class Program
             Console.WriteLine("1. Check Driver Signature Status");
             Console.WriteLine("2. Check Driver BYOD Status");
             Console.WriteLine("3. Check Driver Services");
-            Console.WriteLine("4. Check Driver Exposed Devices");
-            Console.WriteLine("5. Check WFP Status");
-            Console.WriteLine("6. Check for Vulnerable Drivers");
-            Console.WriteLine("7. Check Specific Driver");
-            Console.WriteLine("8. Get Detailed Driver Info");
-            Console.WriteLine("9. Comprehensive Driver Security Check");
+            Console.WriteLine("4. Check for Vulnerable Drivers");
+            Console.WriteLine("5. Check Specific Driver");
+            Console.WriteLine("6. Comprehensive Driver Security Check");
             Console.WriteLine("0. Exit");
 
             if (int.TryParse(Console.ReadLine(), out int choice))
@@ -65,9 +62,6 @@ public class Program
                             Console.WriteLine(provider.CheckWFPStatus());
                             break;
                         case 6:
-                            await provider.CheckDriversAgainstLolDriversDb();
-                            break;
-                        case 7:
                             Console.Write("Enter driver path: ");
                             var driverPath = Console.ReadLine();
                             if (string.IsNullOrWhiteSpace(driverPath))
@@ -76,59 +70,6 @@ public class Program
                                 break;
                             }
                             var comprehensiveReport = await provider.GetComprehensiveDriverCheckAsync(driverPath);
-                            Console.WriteLine("\nComprehensive Security Report:");
-                            Console.WriteLine($"Driver: {comprehensiveReport.DriverName}");
-                            Console.WriteLine($"Path: {comprehensiveReport.Path}");
-                            Console.WriteLine($"Hash: {comprehensiveReport.Hash}");
-                            Console.WriteLine($"\nLolDrivers Check:");
-                            Console.WriteLine($"- Vulnerable: {comprehensiveReport.LolDriversCheck.IsVulnerable}");
-                            if (comprehensiveReport.LolDriversCheck.VulnerabilityDetails != null)
-                            {
-                                Console.WriteLine($"- Vulnerability Details: {comprehensiveReport.LolDriversCheck.VulnerabilityDetails.Description}");
-                            }
-                            Console.WriteLine($"\nMicrosoft Security Check:");
-                            Console.WriteLine($"- WDAC Status: {comprehensiveReport.MicrosoftSecurityCheck.WDACStatus.IsAllowed}");
-                            Console.WriteLine($"- Signature Status: {comprehensiveReport.MicrosoftSecurityCheck.SignatureStatus.IsValid}");
-                            Console.WriteLine($"- Defender Status: {comprehensiveReport.MicrosoftSecurityCheck.DefenderStatus.IsClean}");
-                            Console.WriteLine($"\nDriver Analysis:");
-                            Console.WriteLine($"- Version: {comprehensiveReport.DriverAnalysis.Version}");
-                            Console.WriteLine($"- Publisher: {comprehensiveReport.DriverAnalysis.Publisher}");
-                            Console.WriteLine($"- Last Modified: {comprehensiveReport.DriverAnalysis.LastModified}");
-                            Console.WriteLine($"\nOverall Security Status: {comprehensiveReport.OverallSecurityStatus}");
-                            break;
-                        case 8:
-                            Console.Write("Enter driver path: ");
-                            var driverPathDetailed = Console.ReadLine();
-                            if (string.IsNullOrWhiteSpace(driverPathDetailed))
-                            {
-                                Console.WriteLine("Invalid driver path!");
-                                break;
-                            }
-                            var detailedInfo = await provider.GetDetailedDriverInfoAsync(driverPathDetailed);
-                            Console.WriteLine("\nDetailed Driver Information:");
-                            Console.WriteLine($"Name: {detailedInfo.DriverName}");
-                            Console.WriteLine($"Version: {detailedInfo.Version}");
-                            Console.WriteLine($"Publisher: {detailedInfo.Publisher}");
-                            Console.WriteLine($"Signed: {detailedInfo.IsSigned}");
-                            Console.WriteLine($"Signature Status: {detailedInfo.SignatureStatus}");
-                            Console.WriteLine($"Last Modified: {detailedInfo.LastModified}");
-                            Console.WriteLine($"File Size: {detailedInfo.FileSize}");
-                            Console.WriteLine($"Security Status: {detailedInfo.SecurityStatus}");
-                            Console.WriteLine("\nDependencies:");
-                            foreach (var dep in detailedInfo.Dependencies)
-                            {
-                                Console.WriteLine($"- {dep}");
-                            }
-                            break;
-                        case 9:
-                            Console.Write("Enter driver path: ");
-                            var driverPathComprehensive = Console.ReadLine();
-                            if (string.IsNullOrWhiteSpace(driverPathComprehensive))
-                            {
-                                Console.WriteLine("Invalid driver path!");
-                                break;
-                            }
-                            var comprehensiveReport = await provider.GetComprehensiveDriverCheckAsync(driverPathComprehensive);
                             Console.WriteLine("\nComprehensive Security Report:");
                             Console.WriteLine($"Driver: {comprehensiveReport.DriverName}");
                             Console.WriteLine($"Path: {comprehensiveReport.Path}");

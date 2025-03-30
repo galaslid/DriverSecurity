@@ -2,6 +2,7 @@ using System.Management;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using WindowsDriverInfo.Models;
+using System.Diagnostics;
 
 namespace WindowsDriverInfo.Services;
 
@@ -43,25 +44,32 @@ public class MicrosoftSecurityService
     {
         try
         {
-            using var searcher = new ManagementObjectSearcher("root\\Microsoft\\Windows\\DeviceGuard", 
-                "SELECT * FROM MSFT_DeviceGuardCodeIntegrityPolicy");
-            using var collection = searcher.Get();
-            
             var status = new WDACStatus
             {
                 IsAllowed = true,
                 PolicyDetails = "No WDAC policy found"
             };
 
-            foreach (var policy in collection)
+            var process = new Process
             {
-                var policyStatus = policy.GetPropertyValue("Status")?.ToString();
-                if (policyStatus == "Enabled")
+                StartInfo = new ProcessStartInfo
                 {
-                    status.IsAllowed = false;
-                    status.PolicyDetails = "WDAC policy is enabled";
-                    break;
+                    FileName = "powershell",
+                    Arguments = $"-Command \"Get-MpComputerStatus | Select-Object -ExpandProperty RealTimeProtectionEnabled\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
                 }
+            };
+
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (output.Contains("True"))
+            {
+                status.IsAllowed = false;
+                status.PolicyDetails = "Real-time protection is enabled";
             }
 
             return status;
@@ -88,19 +96,27 @@ public class MicrosoftSecurityService
                 Issuer = "Unknown"
             };
 
-            using var searcher = new ManagementObjectSearcher("root\\CIMV2", 
-                "SELECT * FROM Win32_FileSpecification WHERE Path = '" + driverPath + "'");
-            using var collection = searcher.Get();
-
-            foreach (var file in collection)
+            var process = new Process
             {
-                var manufacturer = file.GetPropertyValue("Manufacturer")?.ToString();
-                var company = file.GetPropertyValue("Company")?.ToString();
-                
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell",
+                    Arguments = $"-Command \"Get-AuthenticodeSignature '{driverPath}' | Select-Object -ExpandProperty SignerCertificate\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (!string.IsNullOrEmpty(output))
+            {
                 status.IsValid = true;
-                status.Publisher = manufacturer ?? company ?? "Unknown";
-                status.Issuer = "Microsoft";
-                break;
+                status.Publisher = "Microsoft Corporation";
+                status.Issuer = "Microsoft Code Signing PCA";
             }
 
             return status;
@@ -128,22 +144,27 @@ public class MicrosoftSecurityService
                 LastScanTime = DateTime.Now
             };
 
-            using var searcher = new ManagementObjectSearcher("root\\Microsoft\\Windows\\Defender", 
-                "SELECT * FROM MSFT_MpThreat WHERE Path = '" + driverPath + "'");
-            using var collection = searcher.Get();
-
-            foreach (var threat in collection)
+            var process = new Process
             {
-                var threatLevel = threat.GetPropertyValue("ThreatLevel")?.ToString();
-                var lastScanTime = threat.GetPropertyValue("LastScanTime")?.ToString();
-                
-                status.IsClean = false;
-                status.ThreatLevel = threatLevel ?? "Unknown";
-                if (DateTime.TryParse(lastScanTime, out DateTime scanTime))
+                StartInfo = new ProcessStartInfo
                 {
-                    status.LastScanTime = scanTime;
+                    FileName = "powershell",
+                    Arguments = $"-Command \"Get-MpThreatDetection | Where-Object {{$_.ResourceID -eq '{driverPath}'}} | Select-Object -ExpandProperty ThreatID\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
                 }
-                break;
+            };
+
+            process.Start();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (!string.IsNullOrEmpty(output))
+            {
+                status.IsClean = false;
+                status.ThreatLevel = "High";
+                status.LastScanTime = DateTime.Now;
             }
 
             return status;

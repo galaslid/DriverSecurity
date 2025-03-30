@@ -16,6 +16,8 @@ using WindowsDriverInfo.Exceptions;
 
 namespace WindowsDriverInfo;
 
+using WindowsDriverInfo.Models;
+
 public class DriverInfoProvider
 {
     private readonly DriverCheckCache _cache;

@@ -1,3 +1,5 @@
+using WindowsDriverInfo.Models;
+
 namespace WindowsDriverInfo.Services;
 
 public class VulnerableDriverComparer : IEqualityComparer<(string Path, string Name, string Hash, LolDriver VulnInfo)>

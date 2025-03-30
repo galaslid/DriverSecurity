@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WindowsDriverInfo.Models;
 using WindowsDriverInfo.Services;
+using System.Net.Http;
 
 namespace WindowsDriverInfo;
 
@@ -137,6 +138,7 @@ public class Program
         services.AddSingleton<ReportGenerator>();
         services.AddSingleton<DriverAnalyzer>();
         services.AddSingleton<MicrosoftSecurityService>();
+        services.AddSingleton<VulnerableDriverVersionService>();
         services.AddHttpClient();
     }
 }

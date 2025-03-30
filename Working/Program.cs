@@ -39,6 +39,7 @@ public class Program
             Console.WriteLine("6. Check for Vulnerable Drivers");
             Console.WriteLine("7. Check Specific Driver");
             Console.WriteLine("8. Get Detailed Driver Info");
+            Console.WriteLine("9. Comprehensive Driver Security Check");
             Console.WriteLine("0. Exit");
 
             if (int.TryParse(Console.ReadLine(), out int choice))
@@ -104,6 +105,35 @@ public class Program
                                 Console.WriteLine($"- {dep}");
                             }
                             break;
+                        case 9:
+                            Console.Write("Enter driver path: ");
+                            var driverPathComprehensive = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(driverPathComprehensive))
+                            {
+                                Console.WriteLine("Invalid driver path!");
+                                break;
+                            }
+                            var comprehensiveReport = await provider.GetComprehensiveDriverCheckAsync(driverPathComprehensive);
+                            Console.WriteLine("\nComprehensive Security Report:");
+                            Console.WriteLine($"Driver: {comprehensiveReport.DriverName}");
+                            Console.WriteLine($"Path: {comprehensiveReport.Path}");
+                            Console.WriteLine($"Hash: {comprehensiveReport.Hash}");
+                            Console.WriteLine($"\nLolDrivers Check:");
+                            Console.WriteLine($"- Vulnerable: {comprehensiveReport.LolDriversCheck.IsVulnerable}");
+                            if (comprehensiveReport.LolDriversCheck.VulnerabilityDetails != null)
+                            {
+                                Console.WriteLine($"- Vulnerability Details: {comprehensiveReport.LolDriversCheck.VulnerabilityDetails.Description}");
+                            }
+                            Console.WriteLine($"\nMicrosoft Security Check:");
+                            Console.WriteLine($"- WDAC Status: {comprehensiveReport.MicrosoftSecurityCheck.WDACStatus.IsAllowed}");
+                            Console.WriteLine($"- Signature Status: {comprehensiveReport.MicrosoftSecurityCheck.SignatureStatus.IsValid}");
+                            Console.WriteLine($"- Defender Status: {comprehensiveReport.MicrosoftSecurityCheck.DefenderStatus.IsClean}");
+                            Console.WriteLine($"\nDriver Analysis:");
+                            Console.WriteLine($"- Version: {comprehensiveReport.DriverAnalysis.Version}");
+                            Console.WriteLine($"- Publisher: {comprehensiveReport.DriverAnalysis.Publisher}");
+                            Console.WriteLine($"- Last Modified: {comprehensiveReport.DriverAnalysis.LastModified}");
+                            Console.WriteLine($"\nOverall Security Status: {comprehensiveReport.OverallSecurityStatus}");
+                            break;
                         case 0:
                             exit = true;
                             continue;
@@ -143,5 +173,6 @@ public class Program
         services.AddSingleton<DriverMonitor>();
         services.AddSingleton<ReportGenerator>();
         services.AddSingleton<DriverAnalyzer>();
+        services.AddSingleton<MicrosoftSecurityService>();
     }
 }

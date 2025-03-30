@@ -43,8 +43,8 @@ public class MicrosoftSecurityService
     {
         try
         {
-            using var searcher = new ManagementObjectSearcher("root\\CIMV2", 
-                "SELECT * FROM Win32_CodecFile WHERE Path = '" + driverPath + "'");
+            using var searcher = new ManagementObjectSearcher("root\\Microsoft\\Windows\\DeviceGuard", 
+                "SELECT * FROM MSFT_DeviceGuardCodeIntegrityPolicy");
             using var collection = searcher.Get();
             
             var status = new WDACStatus
@@ -89,7 +89,7 @@ public class MicrosoftSecurityService
             };
 
             using var searcher = new ManagementObjectSearcher("root\\CIMV2", 
-                "SELECT * FROM Win32_CodecFile WHERE Path = '" + driverPath + "'");
+                "SELECT * FROM Win32_FileSpecification WHERE Path = '" + driverPath + "'");
             using var collection = searcher.Get();
 
             foreach (var file in collection)
@@ -128,8 +128,8 @@ public class MicrosoftSecurityService
                 LastScanTime = DateTime.Now
             };
 
-            using var searcher = new ManagementObjectSearcher("root\\CIMV2", 
-                "SELECT * FROM Win32_CodecFile WHERE Path = '" + driverPath + "'");
+            using var searcher = new ManagementObjectSearcher("root\\Microsoft\\Windows\\Defender", 
+                "SELECT * FROM MSFT_MpThreat WHERE Path = '" + driverPath + "'");
             using var collection = searcher.Get();
 
             foreach (var threat in collection)

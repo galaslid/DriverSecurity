@@ -137,5 +137,6 @@ public class Program
         services.AddSingleton<ReportGenerator>();
         services.AddSingleton<DriverAnalyzer>();
         services.AddSingleton<MicrosoftSecurityService>();
+        services.AddHttpClient();
     }
 }

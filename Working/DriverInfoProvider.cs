@@ -21,12 +21,17 @@ public class DriverInfoProvider
     private readonly DriverCheckCache _cache;
     private readonly ILogger<DriverInfoProvider> _logger;
     private readonly DriverAnalyzer _analyzer;
+    private readonly MicrosoftSecurityService _securityService;
 
-    public DriverInfoProvider(ILogger<DriverInfoProvider> logger, ILoggerFactory loggerFactory)
+    public DriverInfoProvider(
+        ILogger<DriverInfoProvider> logger, 
+        ILoggerFactory loggerFactory,
+        MicrosoftSecurityService securityService)
     {
         _cache = new DriverCheckCache(TimeSpan.FromMinutes(30));
         _logger = logger;
         _analyzer = new DriverAnalyzer(loggerFactory);
+        _securityService = securityService;
     }
 
     public bool CheckDriverSignatureEnforcement()
@@ -47,6 +52,37 @@ public class DriverInfoProvider
         catch (Exception ex)
         {
             throw new Exception($"Error checking driver signature status: {ex.Message}");
+        }
+    }
+
+    public string GetDriverBYODStatus()
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("This function is only available on Windows");
+
+        try
+        {
+            var result = new System.Text.StringBuilder();
+            using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_SystemDriver");
+            
+            result.AppendLine("BYOD drivers status:");
+            foreach (ManagementObject driver in searcher.Get())
+            {
+                var name = driver["Name"]?.ToString();
+                var state = driver["State"]?.ToString();
+                var startMode = driver["StartMode"]?.ToString();
+                
+                result.AppendLine($"Driver: {name}");
+                result.AppendLine($"  State: {state}");
+                result.AppendLine($"  Start Mode: {startMode}");
+                result.AppendLine();
+            }
+
+            return result.ToString();
+        }
+        catch (Exception ex)
+        {
+            return $"Error checking BYOD status: {ex.Message}";
         }
     }
 
@@ -93,135 +129,6 @@ public class DriverInfoProvider
         }
     }
 
-    public string GetDriverBYODStatus()
-    {
-        if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("This function is only available on Windows");
-
-        try
-        {
-            var result = new System.Text.StringBuilder();
-            using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_SystemDriver");
-            
-            result.AppendLine("BYOD drivers status:");
-            foreach (ManagementObject driver in searcher.Get())
-            {
-                var name = driver["Name"]?.ToString();
-                var state = driver["State"]?.ToString();
-                var startMode = driver["StartMode"]?.ToString();
-                
-                result.AppendLine($"Driver: {name}");
-                result.AppendLine($"  State: {state}");
-                result.AppendLine($"  Start Mode: {startMode}");
-                result.AppendLine();
-            }
-
-            return result.ToString();
-        }
-        catch (Exception ex)
-        {
-            return $"Error checking BYOD status: {ex.Message}";
-        }
-    }
-
-    public string CheckDriverExposedDevices()
-    {
-        if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("This function is only available on Windows");
-
-        try
-        {
-            var result = new System.Text.StringBuilder();
-            using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity");
-            
-            result.AppendLine("Connected devices:");
-            foreach (ManagementObject device in searcher.Get())
-            {
-                var name = device["Name"]?.ToString();
-                var deviceId = device["DeviceID"]?.ToString();
-                var status = device["Status"]?.ToString();
-                
-                result.AppendLine($"Device: {name}");
-                result.AppendLine($"  ID: {deviceId}");
-                result.AppendLine($"  Status: {status}");
-                result.AppendLine();
-            }
-
-            return result.ToString();
-        }
-        catch (Exception ex)
-        {
-            return $"Error checking devices: {ex.Message}";
-        }
-    }
-
-    public string CheckWFPStatus()
-    {
-        if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("This function is only available on Windows");
-
-        try
-        {
-            var result = new System.Text.StringBuilder();
-            
-            using (var service = new ServiceController("mpssvc"))
-            {
-                result.AppendLine($"Windows Firewall: {GetServiceStatus(service)}");
-            }
-
-            var process = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "netsh",
-                    Arguments = "advfirewall show allprofiles",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    CreateNoWindow = true
-                }
-            };
-
-            process.Start();
-            string output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit();
-
-            result.AppendLine("\nFirewall profiles status:");
-            result.AppendLine(output);
-
-            return result.ToString();
-        }
-        catch (Exception ex)
-        {
-            return $"Error checking WFP status: {ex.Message}";
-        }
-    }
-
-    private string GetServiceStatus(ServiceController service)
-    {
-        try
-        {
-            switch (service.Status)
-            {
-                case ServiceControllerStatus.Running:
-                    return "Running";
-                case ServiceControllerStatus.Stopped:
-                    return "Stopped";
-                case ServiceControllerStatus.Paused:
-                    return "Paused";
-                case ServiceControllerStatus.StartPending:
-                    return "Starting";
-                case ServiceControllerStatus.StopPending:
-                    return "Stopping";
-                default:
-                    return $"Unknown status: {service.Status}";
-            }
-        }
-        catch
-        {
-            return "Not available";
-        }
-    }
-
     public async Task CheckDriversAgainstLolDriversDb()
     {
         var lolDriversService = new LolDriversService();
@@ -264,18 +171,13 @@ public class DriverInfoProvider
 
         if (vulnerableFound.Any())
         {
-            Console.WriteLine("\n=== Vulnerable Drivers Found ===");
+            Console.WriteLine("\nFound vulnerable drivers:");
             foreach (var (path, name, hash, vulnInfo) in vulnerableFound)
             {
-                Console.WriteLine($"\nName: {name}");
+                Console.WriteLine($"\nDriver: {name}");
                 Console.WriteLine($"Path: {path}");
-                Console.WriteLine($"SHA-256: {hash}");
-                Console.WriteLine($"Category: {vulnInfo.Category}");
-                if (!string.IsNullOrEmpty(vulnInfo.Commands.Description))
-                {
-                    Console.WriteLine($"Description: {vulnInfo.Commands.Description}");
-                }
-                Console.WriteLine("-------------------");
+                Console.WriteLine($"Hash: {hash}");
+                Console.WriteLine($"Vulnerability: {vulnInfo.Description}");
             }
         }
         else
@@ -284,110 +186,136 @@ public class DriverInfoProvider
         }
     }
 
-    private class VulnerableDriverComparer : IEqualityComparer<(string Path, string Name, string Hash, LolDriver VulnInfo)>
-    {
-        public bool Equals((string Path, string Name, string Hash, LolDriver VulnInfo) x, 
-                          (string Path, string Name, string Hash, LolDriver VulnInfo) y)
-        {
-            return x.Hash.Equals(y.Hash, StringComparison.OrdinalIgnoreCase);
-        }
-
-        public int GetHashCode((string Path, string Name, string Hash, LolDriver VulnInfo) obj)
-        {
-            return obj.Hash.ToLowerInvariant().GetHashCode();
-        }
-    }
-
     public string CheckSpecificDriver(string driverName)
     {
-        var lolDriversService = new LolDriversService();
-        var systemDrivers = lolDriversService.GetSystemDrivers();
-        
-        var foundDrivers = systemDrivers
-            .Where(d => Path.GetFileName(d).Equals(driverName, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        
-        if (!foundDrivers.Any())
-        {
-            return $"Driver '{driverName}' not found in the system.";
-        }
-
-        var result = new StringBuilder();
-        result.AppendLine($"Found {foundDrivers.Count} instance(s) of driver '{driverName}':");
-        
-        foreach (var driverPath in foundDrivers)
-        {
-            result.AppendLine($"\nPath: {driverPath}");
-            try
-            {
-                var fileInfo = new FileInfo(driverPath);
-                result.AppendLine($"Size: {fileInfo.Length:N0} bytes");
-                result.AppendLine($"Created: {fileInfo.CreationTime}");
-                result.AppendLine($"Last modified: {fileInfo.LastWriteTime}");
-                
-                using var sha256 = SHA256.Create();
-                using var stream = File.OpenRead(driverPath);
-                var hash = BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-                result.AppendLine($"SHA-256: {hash}");
-            }
-            catch (Exception ex)
-            {
-                result.AppendLine($"Error reading file details: {ex.Message}");
-            }
-        }
-        
-        return result.ToString();
-    }
-
-    public async Task<bool> IsDriverVulnerableAsync(string driverPath, string hash)
-    {
         try
         {
-            if (_cache.TryGetCachedResult(driverPath, out bool isVulnerable))
+            var systemDrivers = new LolDriversService().GetSystemDrivers();
+            var driverPath = systemDrivers.FirstOrDefault(d => 
+                Path.GetFileName(d).Equals(driverName, StringComparison.OrdinalIgnoreCase));
+
+            if (driverPath == null)
             {
-                return isVulnerable;
+                return $"Driver {driverName} not found in system.";
             }
 
-            var result = await Task.Run(() => CheckDriverVulnerability(driverPath, hash));
-            _cache.CacheResult(driverPath, result);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking driver vulnerability: {DriverPath}", driverPath);
-            throw new DriverCheckException("Failed to check driver vulnerability", driverPath);
-        }
-    }
+            using var sha256 = SHA256.Create();
+            using var stream = File.OpenRead(driverPath);
+            var hash = BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
 
-    private bool CheckDriverVulnerability(string driverPath, string hash)
-    {
-        try
-        {
             var lolDriversService = new LolDriversService();
             var vulnerableDrivers = lolDriversService.GetVulnerableDriversAsync().GetAwaiter().GetResult();
-            
-            var driverName = Path.GetFileName(driverPath);
-            
+
             foreach (var vulnDriver in vulnerableDrivers)
             {
                 if ((vulnDriver.Tags.Any() && driverName.ToLower() == vulnDriver.Tags[0].ToLower()) || 
                     vulnDriver.GetKnownVulnerableSamples().Contains(hash, StringComparer.OrdinalIgnoreCase))
                 {
-                    return true;
+                    return $"Driver {driverName} is vulnerable!\nVulnerability: {vulnDriver.Description}";
                 }
             }
-            
-            return false;
+
+            return $"Driver {driverName} appears to be safe.";
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking driver vulnerability: {DriverPath}", driverPath);
-            return false;
+            return $"Error checking driver: {ex.Message}";
         }
     }
 
-    public async Task<DriverAnalyzer.DriverAnalysisResult> GetDetailedDriverInfoAsync(string driverPath)
+    public async Task<DriverSecurityReport> GetComprehensiveDriverCheckAsync(string driverPath)
     {
-        return await _analyzer.AnalyzeDriverAsync(driverPath);
+        try
+        {
+            var lolDriversService = new LolDriversService();
+            var vulnerableDrivers = await lolDriversService.GetVulnerableDriversAsync();
+            var driverName = Path.GetFileName(driverPath);
+            var hash = await CalculateDriverHashAsync(driverPath);
+            
+            var lolDriversResult = new LolDriversCheckResult
+            {
+                IsVulnerable = false,
+                VulnerabilityDetails = null
+            };
+
+            foreach (var vulnDriver in vulnerableDrivers)
+            {
+                if ((vulnDriver.Tags.Any() && driverName.ToLower() == vulnDriver.Tags[0].ToLower()) || 
+                    vulnDriver.GetKnownVulnerableSamples().Contains(hash, StringComparer.OrdinalIgnoreCase))
+                {
+                    lolDriversResult = new LolDriversCheckResult
+                    {
+                        IsVulnerable = true,
+                        VulnerabilityDetails = vulnDriver
+                    };
+                    break;
+                }
+            }
+
+            var microsoftSecurityResult = await _securityService.CheckDriverSecurityAsync(driverPath);
+            var analysisResult = await _analyzer.AnalyzeDriverAsync(driverPath);
+
+            return new DriverSecurityReport
+            {
+                DriverName = driverName,
+                Path = driverPath,
+                Hash = hash,
+                LolDriversCheck = lolDriversResult,
+                MicrosoftSecurityCheck = microsoftSecurityResult,
+                DriverAnalysis = analysisResult,
+                OverallSecurityStatus = DetermineOverallStatus(lolDriversResult, microsoftSecurityResult)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error performing comprehensive driver check: {DriverPath}", driverPath);
+            throw;
+        }
+    }
+
+    private async Task<string> CalculateDriverHashAsync(string driverPath)
+    {
+        using var sha256 = SHA256.Create();
+        using var stream = File.OpenRead(driverPath);
+        return BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+    }
+
+    private SecurityStatus DetermineOverallStatus(
+        LolDriversCheckResult lolDriversResult, 
+        DriverSecurityStatus microsoftSecurityResult)
+    {
+        if (lolDriversResult.IsVulnerable)
+            return SecurityStatus.Critical;
+
+        if (!microsoftSecurityResult.IsSecure)
+            return SecurityStatus.Warning;
+
+        return SecurityStatus.Secure;
+    }
+
+    private string GetServiceStatus(ServiceController service)
+    {
+        try
+        {
+            switch (service.Status)
+            {
+                case ServiceControllerStatus.Running:
+                    return "Running";
+                case ServiceControllerStatus.Stopped:
+                    return "Stopped";
+                case ServiceControllerStatus.Paused:
+                    return "Paused";
+                case ServiceControllerStatus.StartPending:
+                    return "Starting";
+                case ServiceControllerStatus.StopPending:
+                    return "Stopping";
+                default:
+                    return $"Unknown status: {service.Status}";
+            }
+        }
+        catch
+        {
+            return "Not available";
+        }
     }
 }

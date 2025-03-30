@@ -56,10 +56,17 @@ public class Program
                             Console.WriteLine(provider.CheckDriverServices());
                             break;
                         case 4:
-                            Console.WriteLine(provider.CheckDriverExposedDevices());
+                            await provider.CheckDriversAgainstLolDriversDb();
                             break;
                         case 5:
-                            Console.WriteLine(provider.CheckWFPStatus());
+                            Console.Write("Enter driver name: ");
+                            var driverName = Console.ReadLine();
+                            if (string.IsNullOrWhiteSpace(driverName))
+                            {
+                                Console.WriteLine("Invalid driver name!");
+                                break;
+                            }
+                            Console.WriteLine(provider.CheckSpecificDriver(driverName));
                             break;
                         case 6:
                             Console.Write("Enter driver path: ");

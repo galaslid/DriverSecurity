@@ -1,0 +1,114 @@
+@using WindowsDriverInfo.Models
+@model WindowsDriverInfo.Models.DriverSecurityBatchReport
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Driver Security Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .summary { background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .driver-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .status { padding: 5px 10px; border-radius: 3px; font-weight: bold; }
+        .status-safe { background-color: #d4edda; color: #155724; }
+        .status-warning { background-color: #fff3cd; color: #856404; }
+        .status-danger { background-color: #f8d7da; color: #721c24; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        .timestamp { color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Driver Security Report</h1>
+        <p class="timestamp">Generated: @Model.GeneratedAt.ToString("yyyy-MM-dd HH:mm:ss")</p>
+    </div>
+
+    <div class="summary">
+        <h2>Summary</h2>
+        <table>
+            <tr>
+                <th>Total Drivers</th>
+                <td>@Model.TotalDrivers</td>
+            </tr>
+            <tr>
+                <th>Critical Status</th>
+                <td><span class="status status-danger">@Model.CriticalDrivers</span></td>
+            </tr>
+            <tr>
+                <th>Warning Status</th>
+                <td><span class="status status-warning">@Model.WarningDrivers</span></td>
+            </tr>
+            <tr>
+                <th>Safe Status</th>
+                <td><span class="status status-safe">@Model.SafeDrivers</span></td>
+            </tr>
+        </table>
+    </div>
+
+    @foreach (var report in Model.Reports)
+    {
+        <div class="driver-section">
+            <h2>@report.DriverName</h2>
+            <table>
+                <tr>
+                    <th>Path</th>
+                    <td>@report.DriverPath</td>
+                </tr>
+                <tr>
+                    <th>Version</th>
+                    <td>@report.DriverVersion</td>
+                </tr>
+                <tr>
+                    <th>Publisher</th>
+                    <td>@report.Publisher</td>
+                </tr>
+                <tr>
+                    <th>Signature Status</th>
+                    <td>
+                        @{
+                            var signatureClass = report.SignatureStatus == SecurityStatus.Safe ? "status-safe" :
+                                               report.SignatureStatus == SecurityStatus.Warning ? "status-warning" : "status-danger";
+                        }
+                        <span class="status @signatureClass">@report.SignatureStatus</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>LOLDrivers Status</th>
+                    <td>
+                        @{
+                            var lolDriversClass = report.LolDriversStatus == SecurityStatus.Safe ? "status-safe" :
+                                                 report.LolDriversStatus == SecurityStatus.Warning ? "status-warning" : "status-danger";
+                        }
+                        <span class="status @lolDriversClass">@report.LolDriversStatus</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Overall Status</th>
+                    <td>
+                        @{
+                            var overallClass = report.OverallStatus == SecurityStatus.Safe ? "status-safe" :
+                                             report.OverallStatus == SecurityStatus.Warning ? "status-warning" : "status-danger";
+                        }
+                        <span class="status @overallClass">@report.OverallStatus</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Signature Verification</th>
+                    <td>@report.SignatureVerification</td>
+                </tr>
+                <tr>
+                    <th>LOLDrivers Analysis</th>
+                    <td>@report.LolDriversAnalysis</td>
+                </tr>
+                <tr>
+                    <th>Recommendations</th>
+                    <td>@report.Recommendations</td>
+                </tr>
+            </table>
+        </div>
+    }
+</body>
+</html> 

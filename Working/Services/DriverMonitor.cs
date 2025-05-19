@@ -5,19 +5,16 @@ using WindowsDriverInfo.Models;
 
 namespace WindowsDriverInfo.Services;
 
-public class DriverMonitor : IDisposable, IHostedService
+public class DriverMonitor : IDisposable
 {
     private readonly FileSystemWatcher _watcher;
     private readonly DriverInfoProvider _provider;
     private readonly ILogger<DriverMonitor> _logger;
-    private readonly VulnerableDriverVersionService _vulnerableVersionService;
-    private readonly TimeSpan _updateInterval = TimeSpan.FromHours(24);
 
-    public DriverMonitor(DriverInfoProvider provider, DriverCheckerConfig config, ILogger<DriverMonitor> logger, VulnerableDriverVersionService vulnerableVersionService)
+    public DriverMonitor(DriverInfoProvider provider, DriverCheckerConfig config, ILogger<DriverMonitor> logger)
     {
         _provider = provider;
         _logger = logger;
-        _vulnerableVersionService = vulnerableVersionService;
         
         _watcher = new FileSystemWatcher(config.DriversPath)
         {
@@ -73,30 +70,5 @@ public class DriverMonitor : IDisposable, IHostedService
     public void Dispose()
     {
         _watcher?.Dispose();
-    }
-
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        // Запускаем мониторинг файлов
-        _watcher.EnableRaisingEvents = true;
-        
-        // Запускаем обновление базы данных
-        _ = ExecuteAsync(cancellationToken);
-        
-        return Task.CompletedTask;
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
-
-    private async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            await _vulnerableVersionService.UpdateVulnerableVersionsDatabaseAsync();
-            await Task.Delay(_updateInterval, stoppingToken);
-        }
     }
 }

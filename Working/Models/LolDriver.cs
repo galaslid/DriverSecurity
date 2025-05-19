@@ -7,6 +7,9 @@ public class LolDriver
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
 
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
+
     [JsonPropertyName("tags")]
     public List<string> Tags { get; set; } = new();
 

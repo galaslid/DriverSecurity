@@ -1,3 +1,5 @@
+using WindowsDriverInfo.Services;
+
 namespace WindowsDriverInfo.Models;
 
 public class DriverSecurityReport
